@@ -7,6 +7,7 @@ const chalk = require('chalk');
 const path = require('path');
 const prompt = require('prompt');
 const logger = require("./utils/logger");
+const SortUtil = require("./utils/sort-util")
 
 // Global access variables
 let gapi, active, rl;
@@ -150,9 +151,9 @@ function main(api) {
 
                     // Log the incoming message and reset the prompt
                     const name = getTitle(tinfo, uinfo);
-                    const msg = `(${chalk.green(name)}) ${chalk.blue(uinfo[msg.senderID].name)}:  ${atext}`;
-                    logger.info(msg);
-                    newPrompt(msg, rl);
+                    const displayMsg = `(${chalk.green(name)}) ${chalk.blue(uinfo[msg.senderID].name)}:  ${atext}`;
+                    logger.info(`(${name}) ${uinfo[msg.senderID].name}:  ${atext}`);
+                    newPrompt(displayMsg, rl);
                     // Show up the notification for the new incoming message
                     notifier.notify({
                         "title": 'Messenger CLI',
@@ -165,9 +166,9 @@ function main(api) {
             api.getThreadInfo(msg.threadID, (err, tinfo) => {
                 api.getUserInfo(tinfo.participantIDs, (err, tinfo) => {
                     // Log the event information and reset the prompt
-                    const msg = `${chalk.yellow(`[${getTitle(tinfo, uinfo)}] ${msg.logMessageBody}`)}`;
-                    logger.info(msg);
-                    newPrompt(msg, rl);
+                    const displayMsg = `${chalk.yellow(`[${getTitle(tinfo, uinfo)}] ${msg.logMessageBody}`)}`;
+                    logger.info(`[${getTitle(tinfo, uinfo)}] ${msg.logMessageBody}`);
+                    newPrompt(displayMsg, rl);
                 });
             });
         } else if (msg.type == "typ") { // Typing event received
@@ -176,9 +177,9 @@ function main(api) {
                     api.getUserInfo(msg.from, (uerr, uinfo) => {
                         // Log who is typing and reset the prompt
                         const typer = !uerr ? uinfo[msg.from] : { "firstName": "Someone" };
-                        const msg = `(${getTitle(tinfo, uinfo)}) ${chalk.dim(`${typer.name} is typing ...`)}`;
-                        logger.info(msg);
-                        newPrompt(msg, rl);
+                        const displayMsg = `(${getTitle(tinfo, uinfo)}) ${chalk.dim(`${typer.name} is typing ...`)}`;
+                        logger.info(`(${getTitle(tinfo, uinfo)}) ${typer.name} is typing ...`);
+                        newPrompt(displayMsg, rl);
                     });
                 });
             }
@@ -254,6 +255,15 @@ function main(api) {
                         process.exit()
                     }
                 });
+            } else if (search == "friends") {
+                api.getFriendsList((err, data) => {
+                    if (err) logError(err);
+                    console.log("Total friends: " + data.length);
+                    SortUtil.sortLocale(data, "fullName");
+                    data.map(friend => {
+                        console.log(friend.fullName);
+                    })
+                })
             } else {
                 getGroup(search, (err, group) => {
                     if (!err) {
