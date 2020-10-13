@@ -7,11 +7,12 @@ const chalk = require('chalk');
 const path = require('path');
 const prompt = require('prompt');
 const logger = require("./utils/logger");
-const SortUtil = require("./utils/sort-util");
+const SortUtil = require("./utils/SortUtil");
 const Discord = require("discord.js");
-const discordConfig = require("./configs/config-discord.json");
-
-const discord = new Discord.Client();
+const credentialsMessenger = require("./credentials/credentials-messenger");
+const credentialsDiscord = require("./credentials/credentials-discord");
+const DiscordUtil = require("./utils/DiscordUtil");
+let discordHook;
 
 // Global access variables
 let gapi, active, rl;
@@ -31,9 +32,7 @@ try {
 } catch (e) {
     // If none found (or expired), log in with email/password
     try {
-        // Look for stored credentials in a gitignored credentials.js file
-        const credentials = require("./credentials");
-        logInWithCredentials(credentials);
+        logInWithCredentials(credentialsMessenger);
     } catch (e) {
         let email, pass;
         let promptSchema = {
@@ -64,10 +63,10 @@ try {
                 pass = result.password;
 
                 // Store credentials for next time
-                fs.writeFileSync("credentials.js", `exports.email = "${email}";\nexports.password = "${pass}";`);
+                fs.writeFileSync("./credentials/credentials-messenger.js", `exports.email = "${email}";\nexports.password = "${pass}";`);
 
                 // Pass to the login method (which should store an appstate as well)
-                const credentials = require("./credentials");
+                const credentials = require("./credentials/credentials-messenger");
                 logInWithCredentials(credentials);
             }
             else {
@@ -127,29 +126,105 @@ function initPrompt() {
     }
 }
 
-function initDiscord() {
-    // Setup discord
-    discord.on('ready', () => {
-        console.log(`Discord Logged in as ${discord.user.tag}!`);
-        discord.channels.fetch(discordConfig.CHANNEL_ID_MESSENGER)
-            .then(channel => console.log(channel.name))
-            .catch(console.error);
-    })
-
-    discord.on('message', msg => {
-        if (msg.content === 'ping') {
-            msg.reply('pong');
-        }
-    });
-    // Login discord
-    discord.login(discordConfig.BOT_TOKEN);
-
-    // Test
-    // Fetch a channel by its id
-
-
+function initHook() {
+    discordHook = new Discord.WebhookClient(credentialsDiscord.hook.id, credentialsDiscord.hook.token);
+    // Send a message using the webhook
+    discordHook.send('I am now alive!');
+    // Send a slack message
+    // discordHook.sendSlackMessage({
+    //     'username': 'Wumpus',
+    //     'attachments': [{
+    //         'pretext': 'this looks pretty cool',
+    //         'color': '#F0F',
+    //         'footer': 'Powered by sneks',
+    //         'ts': Date.now() / 1000
+    //     }]
+    // }).catch(console.error);
+    // // Send a remote file
+    // discordHook.send({
+    //     username: "User name ne",
+    //     // avatarURL: "",
+    //     embeds: [
+    //         {
+    //           "title": "title ~~(did you know you can have markdown here too?)~~",
+    //           "description": "this supports [named links](https://discordapp.com) on top of the previously shown subset of markdown. ```\nyes, even code blocks```",
+    //           "url": "https://discordapp.com",
+    //           "color": 2194493,
+    //           "timestamp": "2020-10-13T15:29:14.949Z",
+    //           "footer": {
+    //             "icon_url": "https://cdn.discordapp.com/embed/avatars/0.png",
+    //             "text": "footer text"
+    //           },
+    //           "thumbnail": {
+    //             "url": "https://cdn.discordapp.com/embed/avatars/0.png"
+    //           },
+    //           "image": {
+    //             "url": "https://cdn.discordapp.com/embed/avatars/0.png"
+    //           },
+    //           "author": {
+    //             "name": "author name",
+    //             "url": "https://discordapp.com",
+    //             "icon_url": "https://cdn.discordapp.com/embed/avatars/0.png"
+    //           },
+    //           "fields": [
+    //             {
+    //               "name": "🤔",
+    //               "value": "some of these properties have certain limits..."
+    //             },
+    //             {
+    //               "name": "😱",
+    //               "value": "try exceeding some of them!"
+    //             },
+    //             {
+    //               "name": "🙄",
+    //               "value": "an informative error should show up, and this view will remain as-is until all issues are fixed"
+    //             },
+    //             {
+    //               "name": "<:thonkang:219069250692841473>",
+    //               "value": "these last two",
+    //               "inline": true
+    //             },
+    //             {
+    //               "name": "<:thonkang:219069250692841473>",
+    //               "value": "are inline fields",
+    //               "inline": true
+    //             }
+    //           ]
+    //         },
+    //         {
+    //           "title": "Woah",
+    //           "description": "You can also have multiple embeds!\n**NOTE**: The color picker does not work with multiple embeds (yet)."
+    //         }
+    //       ],
+    //     files: ['https://scontent.xx.fbcdn.net/v/t1.15752-0/p480x480/121081850_877396276125589_2005342072022467270_n.jpg?_nc_cat=100&_nc_sid=ae9488&_nc_ohc=Ql4E5p-b6-gAX9J-A9a&_nc_ad=z-m&_nc_cid=0&_nc_ht=scontent.xx&tp=6&oh=4f66e49ac01d0ac4fb65e12ea501b84f&oe=5FACD4D0'],
+        
+    // })
+    //     .then(console.log)
+    //     .catch(console.error);
 }
 
+
+
+function getGroupInfo(tinfo, senderInfo) {
+    return {
+        name: tinfo.name,
+        avatar: tinfo.imageSrc,
+        sender: {
+            name: senderInfo.name,
+            avatar: senderInfo.thumbSrc,
+            url: senderInfo.profileUrl
+        }
+
+    }
+}
+
+function getMessageContent(msg) {
+    console.log(msg);
+    return {
+        content: msg.body,
+        attachments: msg.attachments.map(a => a.url || a.facebookUrl).filter(a => a)
+    }
+}
 /*
     Main body of the CLI.
 gc
@@ -157,7 +232,7 @@ gc
     stdin using the format described in README.md.
 */
 function main(api) {
-    initDiscord();
+    initHook();
     // Use minimal logging from the API
     api.setOptions({ "logLevel": "warn", "listenEvents": true });
     // Initialize the global API object
@@ -172,22 +247,31 @@ function main(api) {
         if (err) { return console.error(`Encountered error receiving messages: ${err}`); }
         if (msg.type == "message") { // Message received
             api.getThreadInfo(msg.threadID, (err, tinfo) => {
+                console.log("tinfo");
+                console.log(tinfo);
                 api.getUserInfo(msg.senderID, (err, uinfo) => {
+                    console.log("message");
+                    console.log(msg);
+                    console.log("uinfo[msg.senderID]");
+                    console.log(uinfo[msg.senderID]);
+                    const groupInfo = getGroupInfo(tinfo, uinfo[msg.senderID]);
                     // If there are attachments, grab their URLs to render them as text instead
                     const atts = msg.attachments.map(a => a.url || a.facebookUrl).filter(a => a);
                     const atext = atts.length > 0 ? `${msg.body}[${atts.join(", ")}]` : msg.body;
 
                     // Log the incoming message and reset the prompt
                     const name = getTitle(tinfo, uinfo);
-                    const displayMsg = `(${chalk.green(name)}) ${chalk.blue(uinfo[msg.senderID].name)}: ${atext}`;
-                    logger.info(`(${name}) ${uinfo[msg.senderID].name}: ${atext}`);
-                    newPrompt(displayMsg, rl);
+                    const displayMsg = `(${name}) ${uinfo[msg.senderID].name}: ${atext}`;
+                    DiscordUtil.hookSendByGroup(discordHook, groupInfo, getMessageContent(msg))
+                    logger.info(displayMsg);
+                    newPrompt(`(${chalk.green(name)}) ${chalk.blue(uinfo[msg.senderID].name)}: ${atext}`, rl);
+                    // Discord Hook it
                     // Show up the notification for the new incoming message
-                    notifier.notify({
-                        "title": 'Messenger CLI',
-                        "message": `New message from ${name}`,
-                        "icon": path.resolve(__dirname, 'assets', 'images', 'messenger-icon.png')
-                    });
+                    // notifier.notify({
+                    //     "title": 'Messenger CLI',
+                    //     "message": `New message from ${name}`,
+                    //     "icon": path.resolve(__dirname, 'assets', 'images', 'messenger-icon.png')
+                    // });
                 });
             });
         } else if (msg.type == "event") { // Chat event received
@@ -286,11 +370,11 @@ function main(api) {
             } else if (search == "friends") {
                 api.getFriendsList((err, data) => {
                     if (err) logError(err);
-                    console.log("Total friends: " + data.length);
                     SortUtil.sortLocale(data, "fullName");
                     data.map(friend => {
                         console.log(friend.fullName);
                     })
+                    console.log("Total friends: " + data.length);
                 })
             } else {
                 getGroup(search, (err, group) => {

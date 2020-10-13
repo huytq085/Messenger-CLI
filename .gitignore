@@ -4,4 +4,4 @@ appstate.json
 credentials.js
 .vscode
 storage/
-configs/
+credentials/
