@@ -7,7 +7,11 @@ const chalk = require('chalk');
 const path = require('path');
 const prompt = require('prompt');
 const logger = require("./utils/logger");
-const SortUtil = require("./utils/sort-util")
+const SortUtil = require("./utils/sort-util");
+const Discord = require("discord.js");
+const discordConfig = require("./configs/config-discord.json");
+
+const discord = new Discord.Client();
 
 // Global access variables
 let gapi, active, rl;
@@ -123,6 +127,29 @@ function initPrompt() {
     }
 }
 
+function initDiscord() {
+    // Setup discord
+    discord.on('ready', () => {
+        console.log(`Discord Logged in as ${discord.user.tag}!`);
+        discord.channels.fetch(discordConfig.CHANNEL_ID_MESSENGER)
+            .then(channel => console.log(channel.name))
+            .catch(console.error);
+    })
+
+    discord.on('message', msg => {
+        if (msg.content === 'ping') {
+            msg.reply('pong');
+        }
+    });
+    // Login discord
+    discord.login(discordConfig.BOT_TOKEN);
+
+    // Test
+    // Fetch a channel by its id
+
+
+}
+
 /*
     Main body of the CLI.
 gc
@@ -130,6 +157,7 @@ gc
     stdin using the format described in README.md.
 */
 function main(api) {
+    initDiscord();
     // Use minimal logging from the API
     api.setOptions({ "logLevel": "warn", "listenEvents": true });
     // Initialize the global API object
@@ -147,12 +175,12 @@ function main(api) {
                 api.getUserInfo(msg.senderID, (err, uinfo) => {
                     // If there are attachments, grab their URLs to render them as text instead
                     const atts = msg.attachments.map(a => a.url || a.facebookUrl).filter(a => a);
-                    const atext = atts.length > 0 ? `${msg.body} [${atts.join(", ")}]` : msg.body;
+                    const atext = atts.length > 0 ? `${msg.body}[${atts.join(", ")}]` : msg.body;
 
                     // Log the incoming message and reset the prompt
                     const name = getTitle(tinfo, uinfo);
-                    const displayMsg = `(${chalk.green(name)}) ${chalk.blue(uinfo[msg.senderID].name)}:  ${atext}`;
-                    logger.info(`(${name}) ${uinfo[msg.senderID].name}:  ${atext}`);
+                    const displayMsg = `(${chalk.green(name)}) ${chalk.blue(uinfo[msg.senderID].name)}: ${atext}`;
+                    logger.info(`(${name}) ${uinfo[msg.senderID].name}: ${atext}`);
                     newPrompt(displayMsg, rl);
                     // Show up the notification for the new incoming message
                     notifier.notify({
@@ -167,7 +195,7 @@ function main(api) {
                 api.getUserInfo(tinfo.participantIDs, (err, tinfo) => {
                     // Log the event information and reset the prompt
                     const displayMsg = `${chalk.yellow(`[${getTitle(tinfo, uinfo)}] ${msg.logMessageBody}`)}`;
-                    logger.info(`[${getTitle(tinfo, uinfo)}] ${msg.logMessageBody}`);
+                    logger.info(`[${getTitle(tinfo, uinfo)}]${msg.logMessageBody}`);
                     newPrompt(displayMsg, rl);
                 });
             });
@@ -236,7 +264,7 @@ function main(api) {
                                 for (let i = 0; i < history.length; i++) {
                                     console.log(`${chalk.green(history[i].senderName)}: ${history[i].body}`);
                                 }
-                                rl.setPrompt(chalk.green(`[${active.name}] `));
+                                rl.setPrompt(chalk.green(`[${active.name}]`));
                                 timestamp = history[0].timestamp;
                             }
                             else {
@@ -274,7 +302,7 @@ function main(api) {
                         active = group;
 
                         // Update the prompt to indicate where messages are being sent by default
-                        rl.setPrompt(chalk.green(`[${active.name}] `));
+                        rl.setPrompt(chalk.green(`[${active.name}]`));
                     } else {
                         logError(err);
                     }
