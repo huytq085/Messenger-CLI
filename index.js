@@ -25,7 +25,7 @@ try {
     // Look for stored appstate first
 
     login({ "appState": JSON.parse(fs.readFileSync("appstate.json", "utf8")) }, (err, api) => {
-        // if (err) return console.error(err);
+        if (err) return console.error(err);
         fs.writeFileSync("appstate.json", JSON.stringify(api.getAppState()));
         main(api);
     });
@@ -90,6 +90,10 @@ function logInWithCredentials(credentials, callback = main) {
     login(
 
         { "email": credentials.email, "password": credentials.password },
+        {
+            userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36"
+        }
+        ,
         (err, api) => {
             if (err) {
                 switch (err.error) {
@@ -130,6 +134,7 @@ function initHook() {
     discordHook = new Discord.WebhookClient(credentialsDiscord.hook.id, credentialsDiscord.hook.token);
     // Send a message using the webhook
     discordHook.send('I am now alive!');
+    // discordHook.send('https://video.xx.fbcdn.net/v/t42.3356-2/121648182_3392606487491296_5311597263540040759_n.mp4/video-1602650054.mp4?_nc_cat=104&_nc_sid=060d78&_nc_ohc=xAhC8MV5qLsAX9vXpsk&vabr=646915&_nc_ht=video.xx&oh=85cc74415ec7813dcf91d5fa13fea4dc&oe=5F87821B&dl=1');
     // Send a slack message
     // discordHook.sendSlackMessage({
     //     'username': 'Wumpus',
@@ -219,10 +224,15 @@ function getGroupInfo(tinfo, senderInfo) {
 }
 
 function getMessageContent(msg) {
-    console.log(msg);
     return {
         content: msg.body,
-        attachments: msg.attachments.map(a => a.url || a.facebookUrl).filter(a => a)
+        attachments: msg.attachments.map(a => {
+            return {
+                type: a.type,
+                url: a.url,
+                previewUrl: a.previewUrl
+            }
+        }).filter(a => a)
     }
 }
 /*
@@ -247,13 +257,7 @@ function main(api) {
         if (err) { return console.error(`Encountered error receiving messages: ${err}`); }
         if (msg.type == "message") { // Message received
             api.getThreadInfo(msg.threadID, (err, tinfo) => {
-                console.log("tinfo");
-                console.log(tinfo);
                 api.getUserInfo(msg.senderID, (err, uinfo) => {
-                    console.log("message");
-                    console.log(msg);
-                    console.log("uinfo[msg.senderID]");
-                    console.log(uinfo[msg.senderID]);
                     const groupInfo = getGroupInfo(tinfo, uinfo[msg.senderID]);
                     // If there are attachments, grab their URLs to render them as text instead
                     const atts = msg.attachments.map(a => a.url || a.facebookUrl).filter(a => a);
@@ -262,7 +266,7 @@ function main(api) {
                     // Log the incoming message and reset the prompt
                     const name = getTitle(tinfo, uinfo);
                     const displayMsg = `(${name}) ${uinfo[msg.senderID].name}: ${atext}`;
-                    DiscordUtil.hookSendByGroup(discordHook, groupInfo, getMessageContent(msg))
+                    DiscordUtil.hookSend(discordHook, groupInfo, getMessageContent(msg))
                     logger.info(displayMsg);
                     newPrompt(`(${chalk.green(name)}) ${chalk.blue(uinfo[msg.senderID].name)}: ${atext}`, rl);
                     // Discord Hook it

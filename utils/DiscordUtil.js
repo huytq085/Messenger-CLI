@@ -1,20 +1,41 @@
 
-exports.hookSendByGroup = (client, groupInfo, message) => {
-    console.log(groupInfo);
+exports.hookSend = (client, groupInfo, message) => {
+    let isGroup = (groupInfo.name != null);
+    let author = null;
+    let description = message.content;
+    let imageUrl = "";
+    if (isGroup) {
+        author = {
+            "name": groupInfo.sender.name,
+            "icon_url": groupInfo.sender.avatar
+        }
+    }
+    if (message.attachments.length > 0) {
+        const att = message.attachments[0];
+        if (att.type === "video") {
+            description = `${message.content}\n${message.attachments[0].url}`;
+            imageUrl = att.previewUrl;
+            client.send(att.url, {
+                username: groupInfo.name || groupInfo.sender.name,
+                avatarURL: groupInfo.avatar || groupInfo.sender.avatar
+            })
+        } else {
+            imageUrl = att.url;
+        }
+    }
+
+
     client.send({
         username: groupInfo.name || groupInfo.sender.name,
         avatarURL: groupInfo.avatar || groupInfo.sender.avatar,
         embeds: [
             {
-                "description": message.content,
+                "description": description,
                 "color": 2194493,
                 "image": {
-                    "url": message.attachments.length > 0 ? message.attachments[0] : ""
+                    "url": imageUrl
                 },
-                "author": {
-                    "name": groupInfo.sender.name,
-                    "icon_url": groupInfo.sender.avatar
-                }
+                "author": author
             }
         ]
     })
@@ -144,4 +165,72 @@ exports.hookSendByGroup = (client, groupInfo, message) => {
 //   type: 'user',
 //   isFriend: false,
 //   isBirthday: false
+// }
+
+// {
+//     type: 'message',
+//     senderID: '100004751108019',
+//     body: '',
+//     threadID: '2623431904421081',
+//     messageID: 'mid.$gAAlR_1bBZNl7Vqhn311JWMQiHOr0',
+//     attachments: [
+//       {
+//         type: 'video',
+//         filename: 'video-1602650054.mp4',
+//         ID: '361102738570290',
+//         previewUrl: 'https://scontent.xx.fbcdn.net/v/t15.3394-10/120931894_3563918810296400_5832596984065363590_n.jpg?_nc_cat=111&_nc_sid=f8ae41&_nc_ohc=p-AH9_ycjRcAX_TSeVN&_nc_ad=z-m&_nc_cid=0&_nc_ht=scontent.xx&oh=a650db02ca0671802974b0a39ae0b085&oe=5FAB0E89',
+//         previewWidth: 320,
+//         previewHeight: 560,
+//         url: 'https://video.xx.fbcdn.net/v/t42.3356-2/121648182_3392606487491296_5311597263540040759_n.mp4/video-1602650054.mp4?_nc_cat=104&_nc_sid=060d78&_nc_ohc=xAhC8MV5qLsAX9vXpsk&vabr=646915&_nc_ht=video.xx&oh=85cc74415ec7813dcf91d5fa13fea4dc&oe=5F87821B&dl=1',
+//         width: 320,
+//         height: 560,
+//         duration: 5000,
+//         videoType: 'file_attachment',
+//         thumbnailUrl: 'https://scontent.xx.fbcdn.net/v/t15.3394-10/120931894_3563918810296400_5832596984065363590_n.jpg?_nc_cat=111&_nc_sid=f8ae41&_nc_ohc=p-AH9_ycjRcAX_TSeVN&_nc_ad=z-m&_nc_cid=0&_nc_ht=scontent.xx&oh=a650db02ca0671802974b0a39ae0b085&oe=5FAB0E89'
+//       }
+//     ],
+//     mentions: {},
+//     timestamp: '1602650054623',
+//     isGroup: true
+//   }
+// tinfo
+// {
+//   threadID: '103852844534650',
+//   threadName: null,
+//   participantIDs: [ '103852844534650', '100004077031736' ],
+//   unreadCount: 2,
+//   messageCount: 124,
+//   timestamp: '1602655850473',
+//   muteUntil: null,
+//   isGroup: false,
+//   isSubscribed: true,
+//   isArchived: false,
+//   folder: 'INBOX',
+//   cannotReplyReason: null,
+//   eventReminders: [],
+//   emoji: null,
+//   color: null,
+//   nicknames: {},
+//   adminIDs: [],
+//   topEmojis: undefined,
+//   reactionsMuteMode: 'reactions_not_muted',
+//   mentionsMuteMode: 'mentions_not_muted',
+//   isPinProtected: false,
+//   relatedPageThread: null,
+//   name: null,
+//   snippet: 'Son',
+//   snippetSender: '103852844534650',
+//   snippetAttachments: [],
+//   serverTimestamp: '1602655850473',
+//   imageSrc: null,
+//   isCanonicalUser: false,
+//   isCanonical: true,
+//   recipientsLoadable: true,
+//   hasEmailParticipant: false,
+//   readOnly: false,
+//   canReply: true,
+//   lastMessageTimestamp: undefined,
+//   lastMessageType: 'message',
+//   lastReadTimestamp: '1602655848303',
+//   threadType: 1
 // }
