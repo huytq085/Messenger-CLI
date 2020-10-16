@@ -1,17 +1,18 @@
 // Dependencies
+require('dotenv').config()
+const argv = require('minimist')(process.argv.slice(2));
 const login = require("facebook-chat-api");
 const fs = require("fs");
 const readline = require("readline");
 const notifier = require("node-notifier");
 const chalk = require('chalk');
-const path = require('path');
 const prompt = require('prompt');
 const logger = require("./utils/logger");
 const SortUtil = require("./utils/SortUtil");
 const Discord = require("discord.js");
 const credentialsMessenger = require("./credentials/credentials-messenger");
-const credentialsDiscord = require("./credentials/credentials-discord");
 const DiscordUtil = require("./utils/DiscordUtil");
+
 let discordHook;
 
 // Global access variables
@@ -23,7 +24,6 @@ rl = readline.createInterface({
 
 try {
     // Look for stored appstate first
-
     login({ "appState": JSON.parse(fs.readFileSync("appstate.json", "utf8")) }, (err, api) => {
         if (err) return console.error(err);
         fs.writeFileSync("appstate.json", JSON.stringify(api.getAppState()));
@@ -131,7 +131,7 @@ function initPrompt() {
 }
 
 function initHook() {
-    discordHook = new Discord.WebhookClient(credentialsDiscord.hook.id, credentialsDiscord.hook.token);
+    discordHook = new Discord.WebhookClient(process.env.DISCORD_HOOK_ID, process.env.DISCORD_HOOK_TOKEN);
     // Send a message using the webhook
     discordHook.send('I am now alive!');
     // discordHook.send('https://video.xx.fbcdn.net/v/t42.3356-2/121648182_3392606487491296_5311597263540040759_n.mp4/video-1602650054.mp4?_nc_cat=104&_nc_sid=060d78&_nc_ohc=xAhC8MV5qLsAX9vXpsk&vabr=646915&_nc_ht=video.xx&oh=85cc74415ec7813dcf91d5fa13fea4dc&oe=5F87821B&dl=1');
@@ -202,7 +202,7 @@ function initHook() {
     //         }
     //       ],
     //     files: ['https://scontent.xx.fbcdn.net/v/t1.15752-0/p480x480/121081850_877396276125589_2005342072022467270_n.jpg?_nc_cat=100&_nc_sid=ae9488&_nc_ohc=Ql4E5p-b6-gAX9J-A9a&_nc_ad=z-m&_nc_cid=0&_nc_ht=scontent.xx&tp=6&oh=4f66e49ac01d0ac4fb65e12ea501b84f&oe=5FACD4D0'],
-        
+
     // })
     //     .then(console.log)
     //     .catch(console.error);
@@ -242,7 +242,9 @@ gc
     stdin using the format described in README.md.
 */
 function main(api) {
-    initHook();
+    if (argv["discord"]) {
+        initHook();
+    }
     // Use minimal logging from the API
     api.setOptions({ "logLevel": "warn", "listenEvents": true });
     // Initialize the global API object
@@ -258,6 +260,7 @@ function main(api) {
         if (msg.type == "message") { // Message received
             api.getThreadInfo(msg.threadID, (err, tinfo) => {
                 api.getUserInfo(msg.senderID, (err, uinfo) => {
+
                     const groupInfo = getGroupInfo(tinfo, uinfo[msg.senderID]);
                     // If there are attachments, grab their URLs to render them as text instead
                     const atts = msg.attachments.map(a => a.url || a.facebookUrl).filter(a => a);
@@ -266,16 +269,21 @@ function main(api) {
                     // Log the incoming message and reset the prompt
                     const name = getTitle(tinfo, uinfo);
                     const displayMsg = `(${name}) ${uinfo[msg.senderID].name}: ${atext}`;
-                    DiscordUtil.hookSend(discordHook, groupInfo, getMessageContent(msg))
+                    if (argv["discord"]) {
+                        DiscordUtil.hookSend(discordHook, groupInfo, getMessageContent(msg))
+                    }
+                    if (argv["notifier"]) {
+                        // Show up the notification for the new incoming message
+                        notifier.notify({
+                            "title": 'Messenger CLI',
+                            "message": `New message from ${name}`,
+                            "icon": path.resolve(__dirname, 'assets', 'images', 'messenger-icon.png')
+                        });
+                    }
                     logger.info(displayMsg);
                     newPrompt(`(${chalk.green(name)}) ${chalk.blue(uinfo[msg.senderID].name)}: ${atext}`, rl);
                     // Discord Hook it
-                    // Show up the notification for the new incoming message
-                    // notifier.notify({
-                    //     "title": 'Messenger CLI',
-                    //     "message": `New message from ${name}`,
-                    //     "icon": path.resolve(__dirname, 'assets', 'images', 'messenger-icon.png')
-                    // });
+
                 });
             });
         } else if (msg.type == "event") { // Chat event received
@@ -398,6 +406,7 @@ function main(api) {
             }
         }
     });
+
 }
 
 /*

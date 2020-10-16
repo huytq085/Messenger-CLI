@@ -5,3 +5,4 @@ credentials.js
 .vscode
 storage/
 credentials/
+.env
