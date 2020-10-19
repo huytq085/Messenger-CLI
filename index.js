@@ -210,7 +210,7 @@ function initHook() {
 
 
 
-function getGroupInfo(tinfo, senderInfo) {
+function getGroupInfo(tinfo, senderInfo, replyMsg) {
     return {
         name: tinfo.name,
         avatar: tinfo.imageSrc,
@@ -219,13 +219,29 @@ function getGroupInfo(tinfo, senderInfo) {
             avatar: senderInfo.thumbSrc,
             url: senderInfo.profileUrl
         }
-
     }
 }
 
-function getMessageContent(msg) {
+function getReplyMessage(messageReply, senderInfo) {
+    return {
+        message: messageReply.body,
+        name: senderInfo.name,
+        avatar: senderInfo.thumbSrc,
+        url: senderInfo.profileUrl,
+        attachments: messageReply.attachments.map(a => {
+            return {
+                type: a.type,
+                url: a.url,
+                previewUrl: a.previewUrl
+            }
+        }).filter(a => a)
+    }
+}
+
+function getMessageContent(msg, replyMsg) {
     return {
         content: msg.body,
+        replyMsg: replyMsg,
         attachments: msg.attachments.map(a => {
             return {
                 type: a.type,
@@ -243,6 +259,7 @@ gc
 */
 function main(api) {
     if (argv["discord"]) {
+        console.log("init hook");
         initHook();
     }
     // Use minimal logging from the API
@@ -260,7 +277,6 @@ function main(api) {
         if (msg.type == "message") { // Message received
             api.getThreadInfo(msg.threadID, (err, tinfo) => {
                 api.getUserInfo(msg.senderID, (err, uinfo) => {
-
                     const groupInfo = getGroupInfo(tinfo, uinfo[msg.senderID]);
                     // If there are attachments, grab their URLs to render them as text instead
                     const atts = msg.attachments.map(a => a.url || a.facebookUrl).filter(a => a);
@@ -282,11 +298,9 @@ function main(api) {
                     }
                     logger.info(displayMsg);
                     newPrompt(`(${chalk.green(name)}) ${chalk.blue(uinfo[msg.senderID].name)}: ${atext}`, rl);
-                    // Discord Hook it
-
                 });
             });
-        } else if (msg.type == "event") { // Chat event received
+        } else if (msg.type === "event") { // Chat event received
             api.getThreadInfo(msg.threadID, (err, tinfo) => {
                 api.getUserInfo(tinfo.participantIDs, (err, tinfo) => {
                     // Log the event information and reset the prompt
@@ -295,7 +309,7 @@ function main(api) {
                     newPrompt(displayMsg, rl);
                 });
             });
-        } else if (msg.type == "typ") { // Typing event received
+        } else if (msg.type === "typ") { // Typing event received
             if (msg.isTyping) { // Only act if isTyping is true, not false
                 api.getThreadInfo(msg.threadID, (terr, tinfo) => {
                     api.getUserInfo(msg.from, (uerr, uinfo) => {
@@ -307,6 +321,37 @@ function main(api) {
                     });
                 });
             }
+        } else if (msg.type === "message_reply") {
+            api.getThreadInfo(msg.threadID, (err, tinfo) => {
+                api.getUserInfo(msg.senderID, (err, uinfo) => {
+                    api.getUserInfo(msg.messageReply.senderID, (err, replyUserInfo) => {
+                        const replyMsg = getReplyMessage(msg.messageReply, replyUserInfo[msg.messageReply.senderID]);
+                        const groupInfo = getGroupInfo(tinfo, uinfo[msg.senderID]);
+                        // If there are attachments, grab their URLs to render them as text instead
+                        const atts = msg.attachments.map(a => a.url || a.facebookUrl).filter(a => a);
+                        const atext = atts.length > 0 ? `${msg.body}[${atts.join(", ")}]` : msg.body;
+                        // Log the incoming message and reset the prompt
+                        const name = getTitle(tinfo, uinfo);
+                        let displayMsg = `(${name}) ${uinfo[msg.senderID].name}: Reply to ${replyMsg.name}[${replyMsg.message}]`;
+                        displayMsg += `\n(${name}) ${uinfo[msg.senderID].name}: ${atext}`;
+                        if (argv["discord"]) {
+                            DiscordUtil.hookSend(discordHook, groupInfo, getMessageContent(msg, replyMsg))
+                        }
+                        if (argv["notifier"]) {
+                            // Show up the notification for the new incoming message
+                            notifier.notify({
+                                "title": 'Messenger CLI',
+                                "message": `New message from ${name}`,
+                                "icon": path.resolve(__dirname, 'assets', 'images', 'messenger-icon.png')
+                            });
+                        }
+                        logger.info(displayMsg);
+                        newPrompt(`(${chalk.green(name)}) ${chalk.blue(uinfo[msg.senderID].name)} replied to ${chalk.blue(replyMsg.name)} [${chalk.yellow(replyMsg.message) || "No Content"}]`, rl);
+                        newPrompt(`(${chalk.green(name)}) ${chalk.blue(uinfo[msg.senderID].name)}: ${atext}`, rl);
+                    })
+
+                });
+            });
         }
     });
 
