@@ -2,24 +2,23 @@
 ## New Features
 - Add 2FA login
 - Push message to Discord channel via hook.
-	Usage:
 	1. Create new file .env and fill infomation:
-```
-DISCORD_HOOK_ID = ""
-DISCORD_HOOK_TOKEN = ""
-```
+  ```
+  DISCORD_HOOK_ID = ""
+  DISCORD_HOOK_TOKEN = ""
+  ```
 	2. Add argrument when start:
-```
-npm start -- --discord
-```
+  ```
+  npm start -- --discord
+  ```
 - Turn on notifier by argrument
-```
-npm start -- --notifier
-```
+  ```
+  npm start -- --notifier
+  ```
 - Command list all friends
-```
-> friends:
-```
+  ```
+  > friends:
+  ```
 
 # Messenger-CLI
 
