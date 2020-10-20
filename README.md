@@ -1,3 +1,26 @@
+# Fork
+## New Features
+- Add 2FA login
+- Push message to Discord channel via hook.
+	Usage:
+	1. Create new file .env and fill infomation:
+```
+DISCORD_HOOK_ID = ""
+DISCORD_HOOK_TOKEN = ""
+```
+	2. Add argrument when start:
+```
+npm start -- --discord
+```
+- Turn on notifier by argrument
+```
+npm start -- --notifier
+```
+- Command list all friends
+```
+> friends:
+```
+
 # Messenger-CLI
 
 Messenger-CLI (MCLI) provides a way to access Facebook Messenger from the command line. You can send and receive messages with notifications in both group chats and direct messages.
