@@ -3,6 +3,7 @@ require('dotenv').config()
 const argv = require('minimist')(process.argv.slice(2));
 const login = require("facebook-chat-api");
 const fs = require("fs");
+const path = require("path")
 const readline = require("readline");
 const notifier = require("node-notifier");
 const chalk = require('chalk');
@@ -259,7 +260,6 @@ gc
 */
 function main(api) {
     if (argv["discord"]) {
-        console.log("init hook");
         initHook();
     }
     // Use minimal logging from the API
