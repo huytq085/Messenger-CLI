@@ -10,6 +10,7 @@ const chalk = require('chalk');
 const prompt = require('prompt');
 const logger = require("./utils/logger");
 const SortUtil = require("./utils/SortUtil");
+const InfoUtils = require("./utils/InfoUtil");
 const Discord = require("discord.js");
 const credentialsMessenger = require("./credentials/credentials-messenger");
 const DiscordUtil = require("./utils/DiscordUtil");
@@ -135,123 +136,43 @@ function initHook() {
     discordHook = new Discord.WebhookClient(process.env.DISCORD_HOOK_ID, process.env.DISCORD_HOOK_TOKEN);
     // Send a message using the webhook
     discordHook.send('I am now alive!');
-    // discordHook.send('https://video.xx.fbcdn.net/v/t42.3356-2/121648182_3392606487491296_5311597263540040759_n.mp4/video-1602650054.mp4?_nc_cat=104&_nc_sid=060d78&_nc_ohc=xAhC8MV5qLsAX9vXpsk&vabr=646915&_nc_ht=video.xx&oh=85cc74415ec7813dcf91d5fa13fea4dc&oe=5F87821B&dl=1');
-    // Send a slack message
-    // discordHook.sendSlackMessage({
-    //     'username': 'Wumpus',
-    //     'attachments': [{
-    //         'pretext': 'this looks pretty cool',
-    //         'color': '#F0F',
-    //         'footer': 'Powered by sneks',
-    //         'ts': Date.now() / 1000
-    //     }]
-    // }).catch(console.error);
-    // // Send a remote file
-    // discordHook.send({
-    //     username: "User name ne",
-    //     // avatarURL: "",
-    //     embeds: [
-    //         {
-    //           "title": "title ~~(did you know you can have markdown here too?)~~",
-    //           "description": "this supports [named links](https://discordapp.com) on top of the previously shown subset of markdown. ```\nyes, even code blocks```",
-    //           "url": "https://discordapp.com",
-    //           "color": 2194493,
-    //           "timestamp": "2020-10-13T15:29:14.949Z",
-    //           "footer": {
-    //             "icon_url": "https://cdn.discordapp.com/embed/avatars/0.png",
-    //             "text": "footer text"
-    //           },
-    //           "thumbnail": {
-    //             "url": "https://cdn.discordapp.com/embed/avatars/0.png"
-    //           },
-    //           "image": {
-    //             "url": "https://cdn.discordapp.com/embed/avatars/0.png"
-    //           },
-    //           "author": {
-    //             "name": "author name",
-    //             "url": "https://discordapp.com",
-    //             "icon_url": "https://cdn.discordapp.com/embed/avatars/0.png"
-    //           },
-    //           "fields": [
-    //             {
-    //               "name": "🤔",
-    //               "value": "some of these properties have certain limits..."
-    //             },
-    //             {
-    //               "name": "😱",
-    //               "value": "try exceeding some of them!"
-    //             },
-    //             {
-    //               "name": "🙄",
-    //               "value": "an informative error should show up, and this view will remain as-is until all issues are fixed"
-    //             },
-    //             {
-    //               "name": "<:thonkang:219069250692841473>",
-    //               "value": "these last two",
-    //               "inline": true
-    //             },
-    //             {
-    //               "name": "<:thonkang:219069250692841473>",
-    //               "value": "are inline fields",
-    //               "inline": true
-    //             }
-    //           ]
-    //         },
-    //         {
-    //           "title": "Woah",
-    //           "description": "You can also have multiple embeds!\n**NOTE**: The color picker does not work with multiple embeds (yet)."
-    //         }
-    //       ],
-    //     files: ['https://scontent.xx.fbcdn.net/v/t1.15752-0/p480x480/121081850_877396276125589_2005342072022467270_n.jpg?_nc_cat=100&_nc_sid=ae9488&_nc_ohc=Ql4E5p-b6-gAX9J-A9a&_nc_ad=z-m&_nc_cid=0&_nc_ht=scontent.xx&tp=6&oh=4f66e49ac01d0ac4fb65e12ea501b84f&oe=5FACD4D0'],
-
-    // })
-    //     .then(console.log)
-    //     .catch(console.error);
 }
 
+function replyMessageWithQuote(threadInfo, usersInfo, msg, replyUserInfo) {
+    const replyMsg = InfoUtils.getReplyMessage(msg.messageReply, replyUserInfo[msg.messageReply.senderID]);
+    replyMessage(threadInfo, usersInfo, msg, replyMsg);
+    
+}
 
-
-function getGroupInfo(tinfo, senderInfo, replyMsg) {
-    return {
-        name: tinfo.name,
-        avatar: tinfo.imageSrc,
-        sender: {
-            name: senderInfo.name,
-            avatar: senderInfo.thumbSrc,
-            url: senderInfo.profileUrl
-        }
+function replyMessage(threadInfo, usersInfo, msg, replyMsg) {
+    const groupInfo = InfoUtils.getGroupInfo(threadInfo, usersInfo[msg.senderID]);
+    // If there are attachments, grab their URLs to render them as text instead
+    const attachmentsAsText = InfoUtils.getAttachmentsAsText(msg);
+    // Log the incoming message and reset the prompt
+    const name = getTitle(threadInfo, usersInfo);
+    
+    if (argv["discord"]) {
+        const messageContent = InfoUtils.getMessageContent(msg, replyMsg);
+        DiscordUtil.hookSend(discordHook, groupInfo, messageContent);
     }
+    if (argv["notifier"]) {
+        // Show up the notification for the new incoming message
+        notifier.notify({
+            "title": 'Messenger CLI',
+            "message": `New message from ${name}`,
+            "icon": path.resolve(__dirname, 'assets', 'images', 'messenger-icon.png')
+        });
+    }
+    let displayMsg = "";
+    if (replyMsg) {
+        displayMsg += `(${name}) ${usersInfo[msg.senderID].name}: Reply to ${replyMsg.name}[${replyMsg.message}]\n`;
+        newPrompt(`(${chalk.green(name)}) ${chalk.blue(usersInfo[msg.senderID].name)} replied to ${chalk.blue(replyMsg.name)} [${chalk.yellow(replyMsg.message) || "No Content"}]`, rl);
+    }
+    displayMsg += `(${name}) ${usersInfo[msg.senderID].name}: ${attachmentsAsText}`;
+    newPrompt(`(${chalk.green(name)}) ${chalk.blue(usersInfo[msg.senderID].name)}: ${attachmentsAsText}`, rl);
+    logger.info(displayMsg);
 }
 
-function getReplyMessage(messageReply, senderInfo) {
-    return {
-        message: messageReply.body,
-        name: senderInfo.name,
-        avatar: senderInfo.thumbSrc,
-        url: senderInfo.profileUrl,
-        attachments: messageReply.attachments.map(a => {
-            return {
-                type: a.type,
-                url: a.url,
-                previewUrl: a.previewUrl
-            }
-        }).filter(a => a)
-    }
-}
-
-function getMessageContent(msg, replyMsg) {
-    return {
-        content: msg.body,
-        replyMsg: replyMsg,
-        attachments: msg.attachments.map(a => {
-            return {
-                type: a.type,
-                url: a.url,
-                previewUrl: a.previewUrl
-            }
-        }).filter(a => a)
-    }
-}
 /*
     Main body of the CLI.
 gc
@@ -275,29 +196,9 @@ function main(api) {
     api.listenMqtt((err, msg) => {
         if (err) { return console.error(`Encountered error receiving messages: ${err}`); }
         if (msg.type == "message") { // Message received
-            api.getThreadInfo(msg.threadID, (err, tinfo) => {
-                api.getUserInfo(msg.senderID, (err, uinfo) => {
-                    const groupInfo = getGroupInfo(tinfo, uinfo[msg.senderID]);
-                    // If there are attachments, grab their URLs to render them as text instead
-                    const atts = msg.attachments.map(a => a.url || a.facebookUrl).filter(a => a);
-                    const atext = atts.length > 0 ? `${msg.body}[${atts.join(", ")}]` : msg.body;
-
-                    // Log the incoming message and reset the prompt
-                    const name = getTitle(tinfo, uinfo);
-                    const displayMsg = `(${name}) ${uinfo[msg.senderID].name}: ${atext}`;
-                    if (argv["discord"]) {
-                        DiscordUtil.hookSend(discordHook, groupInfo, getMessageContent(msg))
-                    }
-                    if (argv["notifier"]) {
-                        // Show up the notification for the new incoming message
-                        notifier.notify({
-                            "title": 'Messenger CLI',
-                            "message": `New message from ${name}`,
-                            "icon": path.resolve(__dirname, 'assets', 'images', 'messenger-icon.png')
-                        });
-                    }
-                    logger.info(displayMsg);
-                    newPrompt(`(${chalk.green(name)}) ${chalk.blue(uinfo[msg.senderID].name)}: ${atext}`, rl);
+            api.getThreadInfo(msg.threadID, (err, threadInfo) => {
+                api.getUserInfo(msg.senderID, (err, usersInfo) => {
+                    replyMessage(threadInfo, usersInfo, msg);
                 });
             });
         } else if (msg.type === "event") { // Chat event received
@@ -322,34 +223,11 @@ function main(api) {
                 });
             }
         } else if (msg.type === "message_reply") {
-            api.getThreadInfo(msg.threadID, (err, tinfo) => {
-                api.getUserInfo(msg.senderID, (err, uinfo) => {
+            api.getThreadInfo(msg.threadID, (err, threadInfo) => {
+                api.getUserInfo(msg.senderID, (err, usersInfo) => {
                     api.getUserInfo(msg.messageReply.senderID, (err, replyUserInfo) => {
-                        const replyMsg = getReplyMessage(msg.messageReply, replyUserInfo[msg.messageReply.senderID]);
-                        const groupInfo = getGroupInfo(tinfo, uinfo[msg.senderID]);
-                        // If there are attachments, grab their URLs to render them as text instead
-                        const atts = msg.attachments.map(a => a.url || a.facebookUrl).filter(a => a);
-                        const atext = atts.length > 0 ? `${msg.body}[${atts.join(", ")}]` : msg.body;
-                        // Log the incoming message and reset the prompt
-                        const name = getTitle(tinfo, uinfo);
-                        let displayMsg = `(${name}) ${uinfo[msg.senderID].name}: Reply to ${replyMsg.name}[${replyMsg.message}]`;
-                        displayMsg += `\n(${name}) ${uinfo[msg.senderID].name}: ${atext}`;
-                        if (argv["discord"]) {
-                            DiscordUtil.hookSend(discordHook, groupInfo, getMessageContent(msg, replyMsg))
-                        }
-                        if (argv["notifier"]) {
-                            // Show up the notification for the new incoming message
-                            notifier.notify({
-                                "title": 'Messenger CLI',
-                                "message": `New message from ${name}`,
-                                "icon": path.resolve(__dirname, 'assets', 'images', 'messenger-icon.png')
-                            });
-                        }
-                        logger.info(displayMsg);
-                        newPrompt(`(${chalk.green(name)}) ${chalk.blue(uinfo[msg.senderID].name)} replied to ${chalk.blue(replyMsg.name)} [${chalk.yellow(replyMsg.message) || "No Content"}]`, rl);
-                        newPrompt(`(${chalk.green(name)}) ${chalk.blue(uinfo[msg.senderID].name)}: ${atext}`, rl);
+                        replyMessageWithQuote(threadInfo, usersInfo, msg, replyUserInfo);
                     })
-
                 });
             });
         }
