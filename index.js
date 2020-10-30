@@ -12,7 +12,6 @@ const logger = require("./utils/logger");
 const SortUtil = require("./utils/SortUtil");
 const InfoUtils = require("./utils/InfoUtil");
 const Discord = require("discord.js");
-const credentialsMessenger = require("./credentials/credentials-messenger");
 const DiscordUtil = require("./utils/DiscordUtil");
 
 let discordHook;
@@ -34,7 +33,7 @@ try {
 } catch (e) {
     // If none found (or expired), log in with email/password
     try {
-        logInWithCredentials(credentialsMessenger);
+        logInWithCredentials();
     } catch (e) {
         let email, pass;
         let promptSchema = {
@@ -88,10 +87,10 @@ gc
     If successful, it stores an appstate to cache the login and passes off the API object to the callback.
     Otherwise, it will return an error specifying what went wrong and log it to the console.
 */
-function logInWithCredentials(credentials, callback = main) {
+function logInWithCredentials(callback = main) {
     login(
 
-        { "email": credentials.email, "password": credentials.password },
+        { "email": process.env.FB_EMAIL, "password": process.env.FB_PASSWORD },
         {
             userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.75 Safari/537.36"
         }
