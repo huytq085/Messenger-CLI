@@ -519,7 +519,12 @@ function getTitle(tinfo, uinfo, api = gapi) {
         } else if (others.length == 1) {
             // Otherwise, just the two people – it's a PM
             // Name it the user's full name
-            name = uinfo[others[0]].name;
+            targetUserInfo = uinfo[others[0]];
+            if (targetUserInfo) {
+                name = targetUserInfo.name;
+            } else {
+                name = "Empty chat";
+            }
         } else {
             // If len is 0, user is only one in a dead group chat
             name = "Empty chat";
