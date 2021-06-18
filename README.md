@@ -6,6 +6,9 @@
   ```
   DISCORD_HOOK_ID = ""
   DISCORD_HOOK_TOKEN = ""
+  *How to get hook id and hook token?
+  -> Open discord app -> Go to the channel -> Edit channel -> Integration -> Create Webhook -> Copy the URL
+  -> URL: https://discordapp.com/api/webhooks/{hookId}/{hookToken}
   ```
 	2. Add argrument when start:
   ```
@@ -19,6 +22,47 @@
   ```
   > friends:
   ```
+## Login using cookies
+1. Login your account on web browser.
+2. After successful login, get the site cookies by some extension (e.g. J2TEAM Cookies or EditThisCookie)
+3. Create the appstate.json file in the root of project and paste the cookies into it.
+4. Replace the "name" to "key" in the appstate file.
+5. Run the app
+
+appstate.json:
+```
+[
+    {
+        "domain": ".facebook.com",
+        "expirationDate": 1664443456.123456,
+        "hostOnly": false,
+        "httpOnly": false,
+        "key": "c_user",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": false,
+        "storeId": "0",
+        "value": "103334077123456",
+        "id": 1
+    },
+    {
+        "domain": ".facebook.com",
+        "expirationDate": 1231111614.645671,
+        "hostOnly": false,
+        "httpOnly": true,
+        "key": "datr",
+        "path": "/",
+        "sameSite": "no_restriction",
+        "secure": true,
+        "session": false,
+        "storeId": "0",
+        "value": "123YXXXkc-K6LR9eM6pnXXX",
+        "id": 2
+    },
+    ...
+]
+```
 
 # Messenger-CLI
 

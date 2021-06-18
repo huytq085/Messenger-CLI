@@ -15,7 +15,7 @@
     "facebook-chat-api": "github:Schmavery/facebook-chat-api",
     "minimist": "^0.2.1",
     "moment": "^2.29.1",
-    "node-notifier": "^5.2.1",
+    "node-notifier": "^8.0.1",
     "path": "^0.12.7",
     "prompt": "^1.0.0",
     "winston": "^3.3.3"
